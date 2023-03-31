@@ -1,0 +1,6 @@
+[submodule "blis"]
+	path = blis
+	url = https://github.com/flame/blis.git
+[submodule "modelLevel"]
+	path = modelLevel
+	url = https://github.com/martineh/modelLevel.git
