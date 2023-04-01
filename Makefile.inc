@@ -4,6 +4,15 @@
 DTYPE = -DFP32
 #------------------------------------------------------------#
 
+#-------------------------------------------------------------
+# MODE Selected. [B3A2C0  | BLIS | KERNELS]  
+#-------------------------------------------------------------
+# [*] FAMILY      : GEMM Family Original
+# [*] FAMILY_BLIS : GEMM Family + BLIS Micro-kernel
+# [*] BLIS        : GEMM BLIS LIBRARY
+#-------------------------------------------------------------
+RUN_MODE=FAMILY
+#-------------------------------------------------------------
 
 #------------------------------------------------------------#
 #--                     MODES AVAILABLES                   --#
@@ -14,14 +23,14 @@ DTYPE = -DFP32
 # [*] AVX2
 # [*] AVX512
 #------------------------------------------------------------#
-MODE  = AVX2
+SIMD_MODE=AVX2
 #------------------------------------------------------------#
 
 
 #------------------------------------------------------------+
-#|        (MR | NR | KR) MICRO-KERNEL CONFIGURATION          |
+#|                MICRO-KERNELs CONFIGURATION                |
 #------------------------------------------------------------+
-#|          [MR | NR | KR]    AVX2, 16 Registers             |
+#|          [MR | NR ]    AVX2, 16 Registers             |
 #------------------------------------------------------------+
 #                                                            | 
 #   Micro-Kernels                                            |
@@ -32,27 +41,26 @@ MODE  = AVX2
 #  +------+------+                                           |
 #  |  8   |  14  |                                           |
 #  +------+------+                                           |
-#  |  16  |  6   |                                           |
+#  |  16  |  6   | *                                         |
 #  +------+------+                                           |
 #  |  24  |  4   |                                           |
 #  +------+------+                                           |
 #  |  32  |  2   |                                           |
 #  +------+------+                                           |
-#  |  40  |  2   | [*] Spilling                              |
-#  +------+------+                                           |
 #                                                            | 
 #------------------------------------------------------------+
-MR = 16
-NR = 6
-KR = 1
+# NOTE: This values are only enabled for RUN_MODE=["FAMILY"] |
+#------------------------------------------------------------+
+MR=16
+NR=6
 #------------------------------------------------------------#
 
 
 #------------------------------------------------------------#
 #--                        LIBRARIES                       --#
 #------------------------------------------------------------#
-INCLUDE_BLIS = -I/home/hmartinez/software/blis/install/include
-LIB_BLIS     = -lblis -L/home/hmartinez/software/blis/install/lib/
+INCLUDE_BLIS = -I/home/hmartinez/workspace/gemm_blis_family/blis_install/include/blis/
+LIB_BLIS     = -lblis -L/home/hmartinez/workspace/gemm_blis_family/blis_install/lib
 
 INCLUDE = ${INCLUDE_BLIS}
 LIBS    = ${LIB_BLIS} -lm

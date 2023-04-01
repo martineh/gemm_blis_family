@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <immintrin.h>
 
-#include "../qblis.h"
-
 //-----------------------------------------------------------------------------------------------------------------------
 // [*] 2v = 2v * 8x(fp32) = 16 
 void gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( char, int, int, int, float, float *, float *, float, float *, int );

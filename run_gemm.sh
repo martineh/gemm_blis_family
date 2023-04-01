@@ -14,18 +14,6 @@ TRANSB=N  #T
 
 
 #-------------------------------------------------------------
-# MODE Selected. [B3A2C0  | BLIS | KERNELS]  
-#-------------------------------------------------------------
-# [*] B3A2C0      : GEMM Family Original
-# [*] B3A2C0_BLIS : GEMM Family + BLIS Micro-kernel
-# [*] BLIS        : GEMM BLIS LIBRARY
-# [*] KERNEL_EVAL : Kernels avaluation (Testing Mode Disabled!)
-#-------------------------------------------------------------
-VARIANT=B3A2C0
-#-------------------------------------------------------------
-
-
-#-------------------------------------------------------------
 # ALPHA - BETA Fixed Values
 #-------------------------------------------------------------
 ALPHA=1.0   
@@ -60,6 +48,5 @@ else
 	source batch/null.sh
 fi
 
-taskset -c 0 ./build/test_gemm.x $VARIANT $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
-
+taskset -c 0 ./build/test_gemm.x "" $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
 

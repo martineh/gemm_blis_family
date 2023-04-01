@@ -35,15 +35,13 @@
 #include <math.h>
 #include <string.h>
 
-#include "qblis.h"
 #include "dtypes.h"
 #include "gemm_blis.h"
 #include "inutils.h"
-#include "modelLevel/model_level.h"
+#include "colors.h"
+#include "../modelLevel/model_level.h"
 
-#if defined(MK_BLIS)
-    #include "blis/blis.h"
-#endif
+#include "blis.h"
 
 #define dabs(a)      ( (a) > 0.0 ? (a) : -(a) )
 #define min(a,b)     ( (a) > (b) ? (b) : (a) )
@@ -83,8 +81,18 @@ void my_aligned_free(void* aligned_ptr) {
 }
 
 int main(int argc, char *argv[]) {
+  #if !defined(BLIS)
+    //  BLIS MICRO-KERNEL 
+    // -------------------
+    #define BTYPE BLIS_FLOAT
+    auxinfo_t aux;
+    bli_init();
+    const cntx_t * cntx = bli_gks_query_cntx();
+    gemm_ukr_ft gemm_kernel = bli_cntx_get_l3_vir_ukr_dt(BLIS_FLOAT, BLIS_GEMM_UKR, cntx);
+  #endif
+  
   char  orderA, orderB, orderC, transA, transB, test;
-  char* variant;
+  char variant[20];
   DTYPE *A  = NULL, 
 	*B  = NULL, 
 	*C  = NULL, 
@@ -106,8 +114,15 @@ int main(int argc, char *argv[]) {
     errorthd = 1.0e-14;
   #endif
 
-  
-  variant  = argv[1];
+
+#if defined(FAMILY)
+  sprintf(variant, "FAMILY");  
+#elif defined(BLIS)
+  sprintf(variant, "BLIS");  
+#elif defined(FAMILY_BLIS)
+  sprintf(variant, "FAMILY+BLIS");  
+#endif
+
   orderA   = argv[2][0];
   orderB   = argv[3][0];
   orderC   = argv[4][0];
@@ -149,31 +164,55 @@ int main(int argc, char *argv[]) {
 
   fd_csv = fopen(argv[argc - 1], "w");
   fprintf(fd_csv, "#l;m;n;k;Gflops\n");
+
   
-  printf("# ============================================================================================");
-  if ( test=='T' ) {printf("=======");} printf("\n");
-  printf("# Driver for the evaluation of GEMM. MR=%d x NR=%d. CNN Selected: '%s'\n", MR, NR, argv[30]);
-  printf("# ============================================================================================");
-  if ( test=='T' ) {printf("=======");} printf("\n");
-  printf("#      variant order  trans     m     n     k     mc     nc     kc     Time   GFLOPS     Error");
-  if ( test=='T' ) {printf(" Status");} printf("\n");
-  printf("#                ABC     AB                                                                   \n");
-  printf("# --------------------------------------------------------------------------------------------");
-  if ( test=='T' ) {printf("-------");} printf("\n");
-
-  // BLIS MICRO-KERNEL 
-  #if defined(MK_BLIS)  
-      #define BTYPE BLIS_FLOAT
-      //auxinfo_t aux;
-      //cntx_t * cntx;
-      //bli_init();
-      //cntx = bli_gks_query_cntx();
-      //sgemm_ukr_ft gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, /*BLIS_GEMM_UKR*/0, cntx);
-
-      //int blis_mr = bli_cntx_get_blksz_def_dt(BTYPE, BLIS_MR, cntx);
-      //int blis_nr = bli_cntx_get_blksz_def_dt(BTYPE, BLIS_NR, cntx);
-      //printf("blis: mr = %d, nr=%d\n", blis_mr, blis_nr);
+  printf(" ===========================================================================================================\n");
+  printf(" |                                           %sRUN CONFIGURATION %s                                            |\n", COLOR_BOLDYELLOW, COLOR_RESET);
+  printf(" ===========================================================================================================\n");
+  printf(" |  [*] Data Type    : ");
+  #ifdef FP32
+    printf(" %sFloat%s                                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #else
+    printf(" %sUnknown%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #endif
+  //----------------------------------------------------------------------------------------------------------------------
+  printf(" |  [*] Mode Selected: ");
+  #ifdef FAMILY
+    printf(" %sFamily%s                                                                             |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #elif FAMILY_BLIS
+    printf(" %sFamily + BLIS uKernel%s                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #elif BLIS
+    printf(" %sBLIS%s                                                                               |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #else
+    printf(" %sUnknown%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #endif
+  //----------------------------------------------------------------------------------------------------------------------
+  printf(" |  [*] SIMD Selected: ");
+  #ifdef AVX2
+    printf(" %sAVX2%s                                                                               |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #else
+    printf(" %sUnknown%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #endif
+  //----------------------------------------------------------------------------------------------------------------------
+  printf(" |  [*] Dataset      :  %s%-40s%s                                           |\n", COLOR_BOLDWHITE, argv[21], COLOR_RESET);
+  printf(" |  [*] Output       :  %s%-40s%s                                           |\n", COLOR_BOLDWHITE, argv[22], COLOR_RESET);
+  //----------------------------------------------------------------------------------------------------------------------
+  #ifndef BLIS
+    printf(" |  [*] MR           :  %s%-5d%s                                                                              |\n", COLOR_BOLDWHITE, MR, COLOR_RESET);
+    printf(" |  [*] NR           :  %s%-5d%s                                                                              |\n", COLOR_BOLDWHITE, NR, COLOR_RESET);
+  #endif
+  //----------------------------------------------------------------------------------------------------------------------
+  printf(" |  [*] Tmin         :  %s%-5.2f%s                                                                              |\n", COLOR_BOLDWHITE, tmin, COLOR_RESET);
+  printf(" -----------------------------------------------------------------------------------------------------------\n");
+
+
+  printf("\n"); 
+  printf(" ===========================================================================================================\n");
+  printf(" |                                   %sDRIVER FOR THE EVALUATION OF GEMM%s                                     |\n", COLOR_BOLDYELLOW, COLOR_RESET);
+  printf(" ===========================================================================================================\n");
+  printf(" |  %sOrder  Trans      M       N      K     MC      NC     KC%s   |    %sTime      GFLOPS      Error%s  |   %sPASS%s  |\n", COLOR_BOLDWHITE, COLOR_RESET, COLOR_BOLDWHITE, COLOR_RESET, COLOR_BOLDWHITE, COLOR_RESET);
+  printf(" -----------------------------------------------------------------------------------------------------------\n");
+
 
   for (unsigned int cnn_i = 0; cnn_i < cnn_num; cnn_i++) {
     if (cnn_enable) {
@@ -195,7 +234,7 @@ int main(int argc, char *argv[]) {
     // MODEL VALUES: MC, NC and KC
     //------------------------------------------------------------------------
     int mc_tmp, nc_tmp, kc_tmp;
-    get_optim_mc_nc_kc(sizeof(float), mmax, nmax, kmax, MR, NR, &mc_tmp, &nc_tmp, &kc_tmp);
+    get_optim_mc_nc_kc(sizeof(DTYPE), mmax, nmax, kmax, MR, NR, &mc_tmp, &nc_tmp, &kc_tmp);
     
     mc = (size_t)mc_tmp;
     nc = (size_t)nc_tmp;
@@ -219,7 +258,7 @@ int main(int argc, char *argv[]) {
    
     A  = (DTYPE *)my_aligned_alloc(32, mmax*kmax*sizeof(DTYPE),      1);   
     B  = (DTYPE *)my_aligned_alloc(32, kmax*nmax*sizeof(DTYPE),      1);   
-    C  = (DTYPE *)my_aligned_alloc(32, mmax*nmax*kmax*sizeof(DTYPE), 1);
+    C  = (DTYPE *)my_aligned_alloc(32, mmax*nmax*sizeof(DTYPE), 1);
 
     Ac = (DTYPE *)my_aligned_alloc(32, (MR+mc)*(KR+kc)*sizeof(DTYPE), 1);
     Bc = (DTYPE *)my_aligned_alloc(32, (KR+kc)*(NR+nc)*sizeof(DTYPE), 1);
@@ -293,41 +332,13 @@ int main(int argc, char *argv[]) {
 	  nreps = 0;
 	  while ( time <= tmin ) {
 	    nreps++;
-	    
-	    // GEMM
-	    if ( strcmp(variant,"B3A2C0\0")==0 ) {
-            #if defined(MK_BLIS)
-	        gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				  Ac, Bc, mc, nc, kc, cntx, &aux, gemm_kernel);
+            #if defined(FAMILY) || defined(FAMILY_BLIS)
+	      gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
+	      		        Ac, Bc, mc, nc, kc, cntx, &aux, gemm_kernel);
             #else
-	        gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				  Ac, Bc, mc, nc, kc );
+	      sgemm_("No transpose", "No transpose", (void *)&m, (void *)&n, (void *)&k, &alpha, A, (void *)&ldA, B, 
+		    (void *)&ldB, &beta, C, (void *)&ldC);
             #endif
-	    } else if ( strcmp(variant,"A3B2C0\0")==0 )
-            #if defined(MK_BLIS)
-	        gemm_blis_A3B2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				Ac, Bc, mc, nc, kc, cntx, &aux, gemm_kernel);
-	    #else
-	        gemm_blis_A3B2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				  Ac, Bc, mc, nc, kc );
-	    #endif
-	    else if ( strcmp(variant,"B3C2A0\0")==0 )
-	      gemm_blis_B3C2A0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				Bc, Cc, mc, nc, kc );
-	    else if ( strcmp(variant,"C3B2A0\0")==0 )
-	      gemm_blis_C3B2A0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				Bc, Cc, mc, nc, kc );
-	    else if ( strcmp(variant,"A3C2B0\0")==0 )
-	      gemm_blis_A3C2B0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				Ac, Cc, mc, nc, kc );
-	    else if ( strcmp(variant,"C3A2B0\0")==0 )
-	      gemm_blis_C3A2B0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-				Ac, Cc, mc, nc, kc );
-	    else {
-	      printf("Error: Unknown variant %s\n", variant);
-	      exit(-1);
-	    }
-	    
 	    t2   = dclock();
 	    time = ( t2 > t1 ? t2 - t1 : 0.0 );
 	  }
@@ -372,17 +383,22 @@ int main(int argc, char *argv[]) {
 	  //printf("   Time         = %12.6e seg.\n", time  );
 	  flops   = 2.0 * m * n * k;
 	  GFLOPS  = flops / (1.0e+9 * time );
-	  //printf("   GFLOPs       = %12.6e     \n", GFLOPS  );
-	  printf("        %6s   %c%c%c     %c%c %5zu %5zu %5zu %6zu %6zu %6zu %8.2e %8.2e %9.2e", 
-		 variant, orderA, orderB, orderC, transA, transB, m, n, k, mc, nc, kc, time, GFLOPS, error );
+
+          #ifdef BLIS
+	  mc = 0; nc = 0; kc = 0;
+          #endif
+	  printf(" |   %c%c%c    %c%c     %6zu %6zu %6zu %6zu %6zu %6zu   |  %8.2e %10.2e %10.2e |", 
+		 orderA, orderB, orderC, transA, transB, m, n, k, mc, nc, kc, time, GFLOPS, error );
+	  
 	  if ( test=='T' ) {
 	    if ( error<errorthd )   
-	      printf("   [OK]");   
+	      printf("%s    OK   %s|", COLOR_BOLDGREEN, COLOR_RESET);   
 	    else {
-	      printf("*******\n");
-	      return 0;
+	      printf("%s  ERROR  %s|", COLOR_BOLDRED, COLOR_RESET);   
 	    }
-	  }
+	  } else
+	      printf("%s    -    %s|", COLOR_RED, COLOR_RESET);   
+
 	  printf("\n");
 	  if (cnn_enable)
 	    fprintf(fd_csv, "%d;%zu;%zu;%zu;%.2e\n", testConf->cnn[cnn_i].layer, m, n, k, GFLOPS);
@@ -392,14 +408,6 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    /*
-    free(A);
-    free(B);
-    free(C);
-    free(Ac);
-    free(Bc);
-    free(Cc);
-    */
     my_aligned_free(A);
     my_aligned_free(B);
     my_aligned_free(C);
@@ -411,10 +419,8 @@ int main(int argc, char *argv[]) {
       free(Cg);
   }
   
-  printf("# ============================================================================================");
-  if ( test=='T' ) {printf("=======");}
+  printf(" ===========================================================================================================\n");
   printf("\n");
-
   return 0;
 }
 
