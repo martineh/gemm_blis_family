@@ -23,44 +23,30 @@ RUN_MODE=FAMILY
 # [*] AVX2
 # [*] AVX512
 #------------------------------------------------------------#
-SIMD_MODE=AVX2
+SIMD_MODE=ARMv8
 #------------------------------------------------------------#
 
 
 #------------------------------------------------------------+
 #|                MICRO-KERNELs CONFIGURATION                |
 #------------------------------------------------------------+
-#|          [MR | NR ]    AVX2, 16 Registers             |
-#------------------------------------------------------------+
-#                                                            | 
-#   Micro-Kernels                                            |
-#  +------+------+                                           |
-#  |  MR  |  NR  |                                           |
-#  +------+------+                                           |
-#  |  8   |  8   |                                           |
-#  +------+------+                                           |
-#  |  8   |  14  |                                           |
-#  +------+------+                                           |
-#  |  16  |  6   | *                                         |
-#  +------+------+                                           |
-#  |  24  |  4   |                                           |
-#  +------+------+                                           |
-#  |  32  |  2   |                                           |
-#  +------+------+                                           |
-#                                                            | 
-#------------------------------------------------------------+
 # NOTE: This values are only enabled for RUN_MODE=["FAMILY"] |
+#       Next, the optimum values for BLIS GEMM Algorithm     |
 #------------------------------------------------------------+
-MR=16
-NR=6
+# AVX2 : MR=6, NR=16                                         |
+#------------------------------------------------------------+
+# ARMv8: MR=8, NR=12                                         |
+#------------------------------------------------------------+
+MR=8
+NR=12
 #------------------------------------------------------------#
 
 
 #------------------------------------------------------------#
 #--                        LIBRARIES                       --#
 #------------------------------------------------------------#
-INCLUDE_BLIS = -I/home/hmartinez/workspace/gemm_blis_family/blis_install/include/blis/
-LIB_BLIS     = -lblis -L/home/hmartinez/workspace/gemm_blis_family/blis_install/lib
+INCLUDE_BLIS = -I/home/martineh/workspace/gemm_blis_family/blis/include/blis/
+LIB_BLIS     = -lblis -L/home/martineh/workspace/gemm_blis_family/blis/lib
 
 INCLUDE = ${INCLUDE_BLIS}
 LIBS    = ${LIB_BLIS} -lm

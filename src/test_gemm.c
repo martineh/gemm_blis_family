@@ -190,6 +190,8 @@ int main(int argc, char *argv[]) {
   printf(" |  [*] SIMD Selected: ");
   #ifdef AVX2
     printf(" %sAVX2%s                                                                               |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #elif ARMv8
+    printf(" %sARMv8%s                                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #else
     printf(" %sUnknown%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #endif

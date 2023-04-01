@@ -1,4 +1,7 @@
 *.~
 *.swp
-./build
-./blis_install
+build
+blis_install
+output/*
+
+

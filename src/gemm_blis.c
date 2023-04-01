@@ -29,30 +29,7 @@
    version   = "1.1"
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <immintrin.h>
-
-//#include <arm_neon.h>
-//#include <arm_sve.h>
-//#include <riscv_vector.h>
-
-#include "dtypes.h"
 #include "gemm_blis.h"
-#include "AMD/gemm_blis_amd_avx256_fp32.h"
-
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
-
-#define Acol(a1,a2)  A[ (a2)*(ldA)+(a1) ]
-#define Bcol(a1,a2)  B[ (a2)*(ldB)+(a1) ]
-#define Ccol(a1,a2)  C[ (a2)*(ldC)+(a1) ]
-#define Mcol(a1,a2)  M[ (a2)*(ldM)+(a1) ]
-
-#define Arow(a1,a2)  A[ (a1)*(ldA)+(a2) ]
-#define Brow(a1,a2)  B[ (a1)*(ldB)+(a2) ]
-#define Crow(a1,a2)  C[ (a1)*(ldC)+(a2) ]
-#define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
 int print_matrix(char *, char, size_t, int, DTYPE *, size_t);
 
@@ -132,11 +109,20 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
             #if defined(FAMILY_BLIS)
 	      gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
             #else
-              #if (MR == 16) && (NR == 6)
-	        gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
-              #else
-		printf("ERROR: Micro-kernel not implemented\n");
-		exit(-1);
+              #ifdef AVX2
+                #if (MR == 16) && (NR == 6)
+	          gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+                #else
+		  printf("ERROR: Micro-kernel not implemented\n");
+		  exit(-1);
+                #endif
+	      #elif ARMv8
+                #if (MR == 8) && (NR == 12)
+	          gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+                #else
+		  printf("ERROR: Micro-kernel not implemented\n");
+		  exit(-1);
+                #endif
               #endif
 	    #endif
 
@@ -365,56 +351,4 @@ void gemm_base_ABresident( char orderA, char transM,
       }
   }
 }
-
-//------------------------------------------------------------------------------------
-// Packings AVX2 Vectorized (AMD EPYC)
-//------------------------------------------------------------------------------------
-void pack_CB_v( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE *Mc, int RR ){
-  //AMD __mm256: Packing for NR=2v=16. Matrix Stored by Rows.
-  __m256 M00, M01, M02;
-
-  int    i, j, jj, k, nr;
-  k = 0;
-  for ( j = 0; j < nc; j += RR ) { 
-    k = j*mc;
-    nr = min( nc-j, RR );
-    if (nr == 24) {// nr == 24
-      for ( i=0; i < mc; i++ ) {
-        M00 = _mm256_loadu_ps(&Mcol(j + 0, i));
-        M01 = _mm256_loadu_ps(&Mcol(j + 8, i));
-        M02 = _mm256_loadu_ps(&Mcol(j + 16,i));
-
-        _mm256_storeu_ps(&Mc[k], M00); k += 8;
-        _mm256_storeu_ps(&Mc[k], M01); k += 8;
-        _mm256_storeu_ps(&Mc[k], M02); k += 8;
-        //k += (RR - nr);
-      }
-    } else if (nr == 16) {// nr == 16
-      for ( i=0; i < mc; i++ ) {
-        M00 = _mm256_loadu_ps(&Mcol(j, i));
-        M01 = _mm256_loadu_ps(&Mcol(j + 8, i));
-
-        _mm256_storeu_ps(&Mc[k], M00); k += 8;
-        _mm256_storeu_ps(&Mc[k], M01); k += 8;
-        k += (RR - nr);
-      }
-    } else {
-      for ( i=0; i<mc; i++ ) {
-        for ( jj=0; jj<nr; jj++ ) {
-          Mc[k] = Mcol(j+jj,i);
-          k++;
-        }
-        k += (RR-nr);
-      }
-    }
-
-  }
-
-}
-
-void pack_RB_v( char orderM, char transM, int mc, int nc, DTYPE *M, int ldM, DTYPE *Mc, int RR ){
-      
-}
-
-
 
