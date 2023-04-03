@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "dtypes.h"
+#include "blis.h"
 
 #ifdef AVX2
   #include <immintrin.h>
@@ -9,9 +10,11 @@
 #elif ARMv8
   #include <arm_neon.h>
   #include "ARMv8/gemm_blis_neon_fp32.h"
+#elif ARM_SVE
+  #include <arm_sve.h>
+  #include "ARM_SVE/ukernels_sve.h"
 #endif
 
-#include "blis.h"
 
 //#include <arm_sve.h>
 //#include <riscv_vector.h>

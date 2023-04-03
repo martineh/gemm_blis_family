@@ -25,6 +25,9 @@ vpath %.h ./src/AVX2
 
 vpath %.c ./src/ARMv8
 vpath %.h ./src/ARMv8
+
+vpath %.c ./src/ARM_SVE
+vpath %.h ./src/ARM_SVE
 #------------------------------------------
 
 #------------------------------------------
@@ -46,8 +49,12 @@ ifeq ($(SIMD_MODE), AVX2)
   _OBJ += gemm_blis_amd_avx256_fp32.o
 else ifeq ($(SIMD_MODE), ARMv8)
   SIMD  = -DARMv8
-  FLAGS = -O3 -march=armv8-a -fopenmp -Wall -Wunused-function
+  FLAGS = -O3 -march=armv8-a -fopenmp
   _OBJ += gemm_blis_neon_fp32.o 
+else ifeq ($(SIMD_MODE), ARM_SVE)
+  SIMD  = -DARM_SVE
+  FLAGS = -O3 -march=armv8.2-a+sve -fopenmp 
+  _OBJ += ukernels_sve.o  
 else
   FLAGS = -O3 
 endif
@@ -60,6 +67,9 @@ ifeq ($(RUN_MODE), FAMILY_BLIS)
   else ifeq ($(SIMD_MODE), ARMv8)
     MR=8
     NR=12
+  else ifeq ($(SIMD_MODE), ARM_SVE)
+    MR=32
+    NR=10
   else
   endif	
 endif

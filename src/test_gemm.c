@@ -81,7 +81,7 @@ void my_aligned_free(void* aligned_ptr) {
 }
 
 int main(int argc, char *argv[]) {
-  #if !defined(BLIS)
+  #if defined(FAMILY_BLIS)
     //  BLIS MICRO-KERNEL 
     // -------------------
     #define BTYPE BLIS_FLOAT
@@ -192,12 +192,14 @@ int main(int argc, char *argv[]) {
     printf(" %sAVX2%s                                                                               |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #elif ARMv8
     printf(" %sARMv8%s                                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #elif ARM_SVE
+    printf(" %sARM SVE%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #else
     printf(" %sUnknown%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #endif
   //----------------------------------------------------------------------------------------------------------------------
-  printf(" |  [*] Dataset      :  %s%-40s%s                                           |\n", COLOR_BOLDWHITE, argv[21], COLOR_RESET);
-  printf(" |  [*] Output       :  %s%-40s%s                                           |\n", COLOR_BOLDWHITE, argv[22], COLOR_RESET);
+  printf(" |  [*] Dataset      :  %s%-50s%s                                 |\n", COLOR_BOLDWHITE, argv[21], COLOR_RESET);
+  printf(" |  [*] Output       :  %s%-50s%s                                 |\n", COLOR_BOLDWHITE, argv[22], COLOR_RESET);
   //----------------------------------------------------------------------------------------------------------------------
   #ifndef BLIS
     printf(" |  [*] MR           :  %s%-5d%s                                                                              |\n", COLOR_BOLDWHITE, MR, COLOR_RESET);
@@ -334,10 +336,14 @@ int main(int argc, char *argv[]) {
 	  nreps = 0;
 	  while ( time <= tmin ) {
 	    nreps++;
-            #if defined(FAMILY) || defined(FAMILY_BLIS)
+            #if defined(FAMILY) 
+	      gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
+	      		        Ac, Bc, mc, nc, kc, NULL, NULL, NULL);
+            #elif defined(FAMILY_BLIS)
 	      gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
 	      		        Ac, Bc, mc, nc, kc, cntx, &aux, gemm_kernel);
             #else
+              printf("sgemm\n");
 	      sgemm_("No transpose", "No transpose", (void *)&m, (void *)&n, (void *)&k, &alpha, A, (void *)&ldA, B, 
 		    (void *)&ldB, &beta, C, (void *)&ldC);
             #endif

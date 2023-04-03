@@ -11,7 +11,7 @@ DTYPE = -DFP32
 # [*] FAMILY_BLIS : GEMM Family + BLIS Micro-kernel
 # [*] BLIS        : GEMM BLIS LIBRARY
 #-------------------------------------------------------------
-RUN_MODE=FAMILY
+RUN_MODE=BLIS
 #-------------------------------------------------------------
 
 #------------------------------------------------------------#
@@ -23,7 +23,7 @@ RUN_MODE=FAMILY
 # [*] AVX2
 # [*] AVX512
 #------------------------------------------------------------#
-SIMD_MODE=ARMv8
+SIMD_MODE=ARM_SVE
 #------------------------------------------------------------#
 
 
@@ -33,20 +33,22 @@ SIMD_MODE=ARMv8
 # NOTE: This values are only enabled for RUN_MODE=["FAMILY"] |
 #       Next, the optimum values for BLIS GEMM Algorithm     |
 #------------------------------------------------------------+
-# AVX2 : MR=6, NR=16                                         |
+# AVX2 :   MR=6, NR=16                                       |
 #------------------------------------------------------------+
-# ARMv8: MR=8, NR=12                                         |
+# ARMv8:   MR=8, NR=12                                       |
 #------------------------------------------------------------+
-MR=8
-NR=12
+# ARM_SVE: MR=32, NR=10                                      |
+#------------------------------------------------------------+
+MR=32
+NR=10
 #------------------------------------------------------------#
 
 
 #------------------------------------------------------------#
 #--                        LIBRARIES                       --#
 #------------------------------------------------------------#
-INCLUDE_BLIS = -I/home/martineh/workspace/gemm_blis_family/blis/include/blis/
-LIB_BLIS     = -lblis -L/home/martineh/workspace/gemm_blis_family/blis/lib
+INCLUDE_BLIS = -I/scratch/bsc44/bsc44459/workspace/gemm_blis_family/blis/install/include/blis/
+LIB_BLIS     = -lblis -L/scratch/bsc44/bsc44459/workspace/gemm_blis_family/blis/install/lib/
 
 INCLUDE = ${INCLUDE_BLIS}
 LIBS    = ${LIB_BLIS} -lm

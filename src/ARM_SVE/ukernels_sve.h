@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <arm_sve.h>
-#include "../qblis.h"
 
 #define  Acol(a1, a2)    A[ (a2) * (ldA)  + (a1) ]
 #define  Bcol(a1, a2)    B[ (a2) * (ldB)  + (a1) ]

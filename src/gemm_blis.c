@@ -47,6 +47,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
   DTYPE  zero = 0.0, one = 1.0, betaI; 
   DTYPE  *Aptr, *Bptr, *Cptr;
 
+
   #if defined(CHECK)
   #include "check_params.h"
   #endif
@@ -57,6 +58,10 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
   
   #include "quick_gemm.h"
   
+  //#ifdef ARM_SVE
+    //sgemm_ukr_ft old_gemm_kernel = bli_cntx_get_l3_nat_ukr_dt(BLIS_FLOAT, /*BLIS_GEMM_UKR*/0, cntx);
+  //#endif
+
   for ( jc=0; jc<n; jc+=NC ) {
     nc = min(n-jc, NC); 
 
@@ -107,20 +112,27 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
               Cptr = &Crow(ic+ir,jc+jr);
 
             #if defined(FAMILY_BLIS)
-	      gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
+	        gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
             #else
               #ifdef AVX2
                 #if (MR == 16) && (NR == 6)
 	          gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
                 #else
-		  printf("ERROR: Micro-kernel not implemented\n");
+		  printf("ERROR: Micro-kernel not implemented for AVX2.\n");
 		  exit(-1);
                 #endif
 	      #elif ARMv8
                 #if (MR == 8) && (NR == 12)
 	          gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
                 #else
-		  printf("ERROR: Micro-kernel not implemented\n");
+		  printf("ERROR: Micro-kernel not implemented for ARMv8.\n");
+		  exit(-1);
+                #endif
+	      #elif ARM_SVE
+                #if (MR == 32) && (NR == 10)
+	          ukernel_sve_32x10_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+                #else
+		  printf("ERROR: Micro-kernel not implemented for ARM SVE.\n");
 		  exit(-1);
                 #endif
               #endif

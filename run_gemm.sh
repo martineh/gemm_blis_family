@@ -48,5 +48,5 @@ else
 	source batch/null.sh
 fi
 
-taskset -c 0 ./build/test_gemm.x "" $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
+taskset -c 12 ./build/test_gemm.x "" $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
 
