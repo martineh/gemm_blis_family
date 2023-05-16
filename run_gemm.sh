@@ -24,14 +24,14 @@ BETA=0.0
 #-------------------------------------------------------------
 # Execution Minimum Time
 #-------------------------------------------------------------
-TIMIN=3.0 
+TIMIN=10.0 
 #-------------------------------------------------------------
 
 
 #-------------------------------------------------------------
 # Enable (T) | Disable (F) Testing Mode
 #-------------------------------------------------------------
-TEST=T
+TEST=N
 #-------------------------------------------------------------
 
 
@@ -48,5 +48,10 @@ else
 	source batch/null.sh
 fi
 
-taskset -c 0 ./build/test_gemm.x "" $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
+#folder=$(echo $2 | cut -f1 -d"/")
+#echo ${folder}
+#mkdir -p ${folder}
+
+taskset -c 1 ./build/test_gemm.x "" $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
+#./build/test_gemm.x "" $ORDERA $ORDERB $ORDERC $TRANSA $TRANSB $ALPHA $BETA $MMIN $MMAX $MSTEP $NMIN $NMAX $NSTEP $KMIN $KMAX $KSTEP $VISUAL $TIMIN $TEST $1 $2
 

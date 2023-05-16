@@ -9,9 +9,10 @@ DTYPE = -DFP32
 #-------------------------------------------------------------
 # [*] FAMILY      : GEMM Family Original
 # [*] FAMILY_BLIS : GEMM Family + BLIS Micro-kernel
+# [*] FAMILY_EXO : GEMM Family + EXO Micro-kernel
 # [*] BLIS        : GEMM BLIS LIBRARY
 #-------------------------------------------------------------
-RUN_MODE=FAMILY
+RUN_MODE=FAMILY_EXO
 #-------------------------------------------------------------
 
 #------------------------------------------------------------#
@@ -19,11 +20,12 @@ RUN_MODE=FAMILY
 #------------------------------------------------------------#
 # [*] ARMv7
 # [*] ARMv8
+# [*] ARMv8_EXO
 # [*] ARM_SVE
 # [*] AVX2
 # [*] AVX512
 #------------------------------------------------------------#
-SIMD_MODE=ARMv8
+SIMD_MODE=ARMv8_EXO
 #------------------------------------------------------------#
 
 
@@ -45,8 +47,9 @@ NR=12
 #------------------------------------------------------------#
 #--                        LIBRARIES                       --#
 #------------------------------------------------------------#
-INCLUDE_BLIS = -I/home/martineh/workspace/gemm_blis_family/blis/include/blis/
-LIB_BLIS     = -lblis -L/home/martineh/workspace/gemm_blis_family/blis/lib
+BLIS_HOME    = /home/adcastel/opt/blis
+INCLUDE_BLIS = -I$(BLIS_HOME)/include/blis/
+LIB_BLIS     = -lblis -L$(BLIS_HOME)/lib
 
 INCLUDE = ${INCLUDE_BLIS}
 LIBS    = ${LIB_BLIS} -lm

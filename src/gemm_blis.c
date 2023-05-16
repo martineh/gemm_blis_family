@@ -50,7 +50,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
   #if defined(CHECK)
   #include "check_params.h"
   #endif
-  
+   
   // Quick return if possible
   if ( (m==0)||(n==0)||(((alpha==zero)||(k==0))&&(beta==one)) )
     return;
@@ -106,23 +106,40 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 	    else
               Cptr = &Crow(ic+ir,jc+jr);
 
-            #if defined(FAMILY_BLIS)
-	      gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
+            #if defined(FAMILY_EXO)
+	    if (mr == 8 && nr == 12)
+                uk_8x12_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+	    else if (mr == 8 && nr == 4)
+                uk_8x4_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+	    else if(mr==8 && nr == 8)
+                uk_8x8_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+	    else if(mr==4 && nr == 12)
+                uk_4x12_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+	    else if (mr == 4 && nr == 8)
+                uk_4x8_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+	    else if (mr == 4 && nr == 4)
+                uk_4x4_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+	    else
+                uk_1xX_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
             #else
-              #ifdef AVX2
-                #if (MR == 16) && (NR == 6)
-	          gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+                #if defined(FAMILY_BLIS)
+	         gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
                 #else
-		  printf("ERROR: Micro-kernel not implemented\n");
+                  #ifdef AVX2
+                    #if (MR == 16) && (NR == 6)
+	              gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+                    #else
+		      printf("ERROR: Micro-kernel not implemented\n");
+		     exit(-1);
+                    #endif
+	           #elif ARMv8
+                     #if (MR == 8) && (NR == 12)
+	                gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+                    #else
+		     printf("ERROR: Micro-kernel not implemented\n");
 		  exit(-1);
                 #endif
-	      #elif ARMv8
-                #if (MR == 8) && (NR == 12)
-	          gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
-                #else
-		  printf("ERROR: Micro-kernel not implemented\n");
-		  exit(-1);
-                #endif
+              #endif
               #endif
 	    #endif
 

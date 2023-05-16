@@ -1,10 +1,10 @@
-export MMIN=4
-export MMAX=8
-export MSTEP=1
+export MMIN=8
+export MMAX=24
+export MSTEP=4
 
-export NMIN=11
-export NMAX=12
-export NSTEP=1
+export NMIN=12
+export NMAX=24
+export NSTEP=4
 
 export KMIN=4
 export KMAX=8

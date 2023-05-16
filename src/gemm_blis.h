@@ -9,6 +9,9 @@
 #elif ARMv8
   #include <arm_neon.h>
   #include "ARMv8/gemm_blis_neon_fp32.h"
+#elif ARMv8_EXO
+  #include <arm_neon.h>
+  #include "ARMv8/uk.h"
 #endif
 
 #include "blis.h"

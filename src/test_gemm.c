@@ -121,6 +121,8 @@ int main(int argc, char *argv[]) {
   sprintf(variant, "BLIS");  
 #elif defined(FAMILY_BLIS)
   sprintf(variant, "FAMILY+BLIS");  
+#elif defined(FAMILY_EXO)
+  sprintf(variant, "FAMILY+EXO");  
 #endif
 
   orderA   = argv[2][0];
@@ -181,6 +183,8 @@ int main(int argc, char *argv[]) {
     printf(" %sFamily%s                                                                             |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #elif FAMILY_BLIS
     printf(" %sFamily + BLIS uKernel%s                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #elif FAMILY_EXO
+    printf(" %sFamily + EXO uKernel%s                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #elif BLIS
     printf(" %sBLIS%s                                                                               |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #else
@@ -192,6 +196,8 @@ int main(int argc, char *argv[]) {
     printf(" %sAVX2%s                                                                               |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #elif ARMv8
     printf(" %sARMv8%s                                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
+  #elif ARMv8_EXO
+    printf(" %sARMv8_EXO%s                                                                              |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #else
     printf(" %sUnknown%s                                                                            |\n", COLOR_BOLDWHITE, COLOR_RESET);
   #endif
@@ -334,7 +340,7 @@ int main(int argc, char *argv[]) {
 	  nreps = 0;
 	  while ( time <= tmin ) {
 	    nreps++;
-            #if defined(FAMILY) || defined(FAMILY_BLIS)
+            #if defined(FAMILY) || defined(FAMILY_BLIS) || defined(FAMILY_EXO)
 	      gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
 	      		        Ac, Bc, mc, nc, kc, cntx, &aux, gemm_kernel);
             #else
