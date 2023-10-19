@@ -3,6 +3,8 @@
 
 #include "dtypes.h"
 
+#include "microkernel.h"
+
 #ifdef AVX2
   #include <immintrin.h>
   #include "AVX2/gemm_blis_amd_avx256_fp32.h"

@@ -1,18 +1,21 @@
 #------------------------------------------------------------#
 #--                     MODES AVAILABLES                   --#
 #------------------------------------------------------------#
+# DTYPE = -DFP64
 DTYPE = -DFP32
+# DTYPE = -DFP16
 #------------------------------------------------------------#
 
 #-------------------------------------------------------------
 # MODE Selected. [B3A2C0  | BLIS | KERNELS]  
 #-------------------------------------------------------------
-# [*] FAMILY      : GEMM Family Original
-# [*] FAMILY_BLIS : GEMM Family + BLIS Micro-kernel
-# [*] FAMILY_EXO : GEMM Family + EXO Micro-kernel
-# [*] BLIS        : GEMM BLIS LIBRARY
+# [*] FAMILY         : GEMM Family Original
+# [*] FAMILY_BLIS    : GEMM Family + BLIS Micro-kernel
+# [*] FAMILY_EXO     : GEMM Family + EXO Micro-kernel
+# [*] FAMILY_AUTOGEN : GEMM Family + Script Micro-kernel 
+# [*] BLIS           : GEMM BLIS LIBRARY
 #-------------------------------------------------------------
-RUN_MODE=FAMILY_EXO
+RUN_MODE=BLIS
 #-------------------------------------------------------------
 
 #------------------------------------------------------------#
@@ -25,7 +28,7 @@ RUN_MODE=FAMILY_EXO
 # [*] AVX2
 # [*] AVX512
 #------------------------------------------------------------#
-SIMD_MODE=ARMv8_EXO
+SIMD_MODE=AVX2
 #------------------------------------------------------------#
 
 
@@ -35,19 +38,19 @@ SIMD_MODE=ARMv8_EXO
 # NOTE: This values are only enabled for RUN_MODE=["FAMILY"] |
 #       Next, the optimum values for BLIS GEMM Algorithm     |
 #------------------------------------------------------------+
-# AVX2 : MR=6, NR=16                                         |
+# AVX2 : KR=6, KR=16                                         |
 #------------------------------------------------------------+
-# ARMv8: MR=8, NR=12                                         |
+# ARMv8: KR=8, KR=12                                         |
 #------------------------------------------------------------+
-MR=8
-NR=12
+MR=6
+NR=16
 #------------------------------------------------------------#
 
 
 #------------------------------------------------------------#
 #--                        LIBRARIES                       --#
 #------------------------------------------------------------#
-BLIS_HOME    = /home/adcastel/opt/blis
+BLIS_HOME    = /mnt/beegfs/alumnos/galalop/src/gemm_blis_family/blis/install
 INCLUDE_BLIS = -I$(BLIS_HOME)/include/blis/
 LIB_BLIS     = -lblis -L$(BLIS_HOME)/lib
 

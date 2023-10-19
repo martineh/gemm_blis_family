@@ -72,7 +72,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
       else
         Bptr = &Brow(jc,pc);
       
-      pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);
+      pack_CB( orderB, transB, kc, nc, Bptr, ldB, Bc, NR);  // Pack B
       
       if ( pc==0 )
         betaI = beta;
@@ -93,7 +93,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 	}
 	
 	//Comment or uncomment for packing or not
-        pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);
+        pack_RB( orderA, transA, mc, kc, Aptr, ldA, Ac, MR);  // Pack A
 	
         for ( jr=0; jr<nc; jr+=NR ) {
           nr = min(nc-jr, NR); 
@@ -121,6 +121,11 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                 uk_4x4_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
 	    else
                 uk_1xX_a1True_b1False( NULL, kc, &alpha,  &Ac[ir*kc],  &Bc[jr*kc], &betaI, Cptr);
+        #elif FAMILY_AUTOGEN
+              gemm_ukernel_Cresident_SIMD(mr, nr, kc, &Ac[ir*kc],      ldA, &Bc[jr*kc],         ldB, Cptr, ldC, orderC, betaI);
+//               gemm_ukernel_Cresident_SIMD(mr, nr, kc, &Acol(ic+ir,pc), ldA, &Bc[jr*kc],         ldB, Cptr, ldC, orderC, betaI);                  // No Pack A
+//               gemm_ukernel_Cresident_SIMD(mr, nr, kc, &Ac[ir*kc],      ldA, &Bcol(pc, jc + jr), ldB, Cptr, ldC, orderC, betaI);                  // No Pack B
+//               gemm_ukernel_Cresident_SIMD(mr, nr, kc, &Acol(ic+ir,pc), ldA, &Bcol(pc, jc + jr), ldB, Cptr, ldC, orderC, betaI);                  // No packing AB
             #else
                 #if defined(FAMILY_BLIS)
 	         gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
