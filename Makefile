@@ -43,11 +43,9 @@ endif
 ifeq ($(SIMD_MODE), AVX2)
   SIMD  = -DAVX2
   FLAGS = -fopenmp -fomit-frame-pointer -O3 -mavx2 -mfma -mfpmath=sse -march=znver1 -mno-avx256-split-unaligned-store -Wall -Wno-unused-function -Wfatal-errors -fPIC -std=c99 -D_POSIX_C_SOURCE=200112L
-  _OBJ += gemm_blis_amd_avx256_fp32.o
 else ifeq ($(SIMD_MODE), ARMv8)
   SIMD  = -DARMv8
   FLAGS = -O3 -march=armv8-a -fopenmp -Wall -Wunused-function -std=gnu++17
-  _OBJ += gemm_blis_neon_fp32.o
 else
   FLAGS = -O3 
 endif
@@ -67,15 +65,29 @@ endif
 OPTFLAGS = $(FLAGS) -DCHECK -DMR=$(MR) -DNR=$(NR) -DKR=1 $(MODE) $(SIMD) $(DTYPE)
 #------------------------------------------
 
-
-
-
 OBJ = $(patsubst %, $(OBJDIR)/%, $(_OBJ))
+
+SRC_ASM_FILES = $(wildcard ./src/asm_generator/ukernels/*.S)
+OBJ_ASM_FILES = $(patsubst ./src/asm_generator/ukernels/%.S, $(OBJDIR)/%.o, $(SRC_ASM_FILES))
+OBJ += $(OBJ_ASM_FILES)
+
+OBJ += $(OBJDIR)/gemm_ukernel.o  $(OBJDIR)/selector_ukernel.o
+
 default: $(OBJDIR)/$(BIN)
 
 $(OBJDIR)/%.o:%.c
 	@mkdir -p $(OBJDIR)
 	$(CC) $(CFLAGS) $(OPTFLAGS) -c -o $@ $< $(INCLUDE) $(LIBS)
+
+$(OBJDIR)/%.o: ./src/asm_generator/ukernels/%.S
+	gcc $(CFLAGS) $(OPTFLAGS) -c -o $@ $< $(INCLUDE) $(LIBS)
+
+$(OBJDIR)/gemm_ukernel.o: ./src/asm_generator/ukernels/gemm_ukernel.c
+	$(CC) $(CFLAGS) $(OPTFLAGS) -c -o $@ $< $(INCLUDE) $(LIBS)
+
+$(OBJDIR)/selector_ukernel.o: ./src/asm_generator/ukernels/selector_ukernel.c
+	$(CC) $(CFLAGS) $(OPTFLAGS) -c -o $@ $< $(INCLUDE) $(LIBS)
+
 
 $(OBJDIR)/$(BIN): $(OBJ) 
 	$(CLINKER) $(OPTFLAGS) -o $@ $^ $(LIBS)

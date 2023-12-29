@@ -39,9 +39,12 @@
 #include "gemm_blis.h"
 #include "inutils.h"
 #include "colors.h"
-#include "../modelLevel/model_level.h"
 
-#include "blis.h"
+#include "../modelLevel/model_level.h"
+extern "C"      // Import C style functions 
+{
+  #include "asm_generator/ukernels/gemm_ukernel_headers.h"
+}
 
 #define dabs(a)      ( (a) > 0.0 ? (a) : -(a) )
 #define min(a,b)     ( (a) > (b) ? (b) : (a) )
@@ -80,6 +83,52 @@ void my_aligned_free(void* aligned_ptr) {
     free(((char*)aligned_ptr) - offset);
 }
 
+/*
+void ukernels_selector(int _MR, int _NR, ukernel_asm *ukr, ukernel_edge *ukr_edge) {
+
+  if (_MR == 4 && _NR == 4) {
+    (*ukr)      = &gemm_ukernel_asm_4x4;
+    (*ukr_edge) = &gemm_ukernel_edge_4x4;
+  } else if (_MR == 4 && _NR == 8) {
+    (*ukr)      = &gemm_ukernel_asm_4x8;
+    (*ukr_edge) = &gemm_ukernel_edge_4x8;
+  } else if (_MR == 4 && _NR == 12) {
+    (*ukr)      = &gemm_ukernel_asm_4x12;
+    (*ukr_edge) = &gemm_ukernel_edge_4x12;
+  } else if (_MR == 4 && _NR == 16) {
+    (*ukr)      = &gemm_ukernel_asm_4x16;
+    (*ukr_edge) = &gemm_ukernel_edge_4x16;
+  } else if (_MR == 4 && _NR == 20) {
+    (*ukr)      = &gemm_ukernel_asm_4x20;
+    (*ukr_edge) = &gemm_ukernel_edge_4x20;
+  } else if (_MR == 8 && _NR == 4) {
+    (*ukr)      = &gemm_ukernel_asm_8x4;
+    (*ukr_edge) = &gemm_ukernel_edge_8x4;
+  } else if (_MR == 8 && _NR == 8) {
+    (*ukr)      = &gemm_ukernel_asm_8x8;
+    (*ukr_edge) = &gemm_ukernel_edge_8x8;
+  } else if (_MR == 8 && _NR == 12) {
+    (*ukr)      = &gemm_ukernel_asm_8x12;
+    (*ukr_edge) = &gemm_ukernel_edge_8x12;
+  } else if (_MR == 12 && _NR == 4) {
+    (*ukr)      = &gemm_ukernel_asm_12x4;
+    (*ukr_edge) = &gemm_ukernel_edge_12x4;
+  } else if (_MR == 12 && _NR == 8) {
+    (*ukr)      = &gemm_ukernel_asm_12x8;
+    (*ukr_edge) = &gemm_ukernel_edge_12x8;
+  } else if (_MR == 16 && _NR == 4) {
+    (*ukr)      = &gemm_ukernel_asm_16x4;
+    (*ukr_edge) = &gemm_ukernel_edge_16x4;
+  } else if (_MR == 20 && _NR == 4) {
+    (*ukr)      = &gemm_ukernel_asm_20x4;
+    (*ukr_edge) = &gemm_ukernel_edge_20x4;
+  } else {
+    (*ukr)      = NULL;
+    (*ukr_edge) = NULL;
+  }
+}
+*/
+
 int main(int argc, char *argv[]) {
   
   char  orderA, orderB, orderC, transA, transB, test;
@@ -90,6 +139,7 @@ int main(int argc, char *argv[]) {
 	*Cg = NULL, 
 	*Ac = NULL, 
 	*Bc = NULL, 
+	*Ctmp = NULL,
 	*Cc = NULL;
   DTYPE alpha, beta;
   double t1, t2, time, tmin, error, nrm, tmp, errorthd, flops, GFLOPS;
@@ -97,6 +147,12 @@ int main(int argc, char *argv[]) {
          visual, ldA, ldB, ldC;
  
   size_t m, n, k, mc, nc, kc, mmin, mmax, mstep, nmin, nmax, nstep, kmin, kmax, kstep; 
+
+  ukernel_asm ukr;
+  ukernel_edge ukr_edge;
+ 
+  ukernels_selector(MR, NR, &ukr, &ukr_edge);
+
   #if defined(FP16)
     errorthd = 1.0e-3;
   #elif defined(FP32)
@@ -257,6 +313,8 @@ int main(int argc, char *argv[]) {
     Bc = (DTYPE *)my_aligned_alloc(32, (KR+kc)*(NR+nc)*sizeof(DTYPE), 1);
     Cc = (DTYPE *)my_aligned_alloc(32, (MR+mc)*(NR+nc)*sizeof(DTYPE), 1);
     
+   Ctmp = (float *)calloc(MR*NR, sizeof(float));
+
     if ( test=='T' )
       Cg = (DTYPE *) malloc(mmax*nmax*sizeof(DTYPE));   
     
@@ -327,7 +385,7 @@ int main(int argc, char *argv[]) {
 	    nreps++;
             #if defined(FAMILY) || defined(FAMILY_BLIS)
 	      gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-	      		        Ac, Bc, mc, nc, kc, NULL, NULL, NULL);
+	      		        Ac, Bc, mc, nc, kc, Ctmp, ukr, ukr_edge);
             #else
 	      sgemm_("No transpose", "No transpose", (void *)&m, (void *)&n, (void *)&k, &alpha, A, (void *)&ldA, B, 
 		    (void *)&ldB, &beta, C, (void *)&ldC);
@@ -407,7 +465,7 @@ int main(int argc, char *argv[]) {
     my_aligned_free(Ac);
     my_aligned_free(Bc);
     my_aligned_free(Cc);
-  
+    free(Ctmp); 
     if ( test=='T' )
       free(Cg);
   }

@@ -4,7 +4,7 @@ typedef void (*ukernel_edge)(size_t mr, size_t nr, size_t _MR, size_t _NR, size_
                             float *a, float *b, float *beta, float *ctmp, 
                             float *C, size_t ldC);
 
-void ukernels_selector(int MR, int NR, ukernel_asm *ukr, ukernel_edge *ukr_edge);
+void ukernels_selector(int _MR, int _NR, ukernel_asm *ukr, ukernel_edge *ukr_edge);
 
 void gemm_ukernel_asm_4x4(size_t , float *, float *, float *, float *, float *, size_t );
 

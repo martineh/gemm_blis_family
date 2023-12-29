@@ -11,11 +11,10 @@
   #include "ARMv8/gemm_blis_neon_fp32.h"
 #endif
 
-#include "blis.h"
-
-//#include <arm_sve.h>
-//#include <riscv_vector.h>
-
+extern "C"      // Import C style functions
+{
+#include "asm_generator/ukernels/gemm_ukernel_headers.h"
+}
 
 #define Acol(a1,a2)  A[ (a2)*(ldA)+(a1) ]
 #define Bcol(a1,a2)  B[ (a2)*(ldB)+(a1) ]
@@ -28,7 +27,7 @@
 #define Mrow(a1,a2)  M[ (a1)*(ldM)+(a2) ]
 
 void gemm_blis_B3A2C0( char, char, char, char, char, size_t, size_t, size_t, DTYPE, DTYPE *, size_t, DTYPE *, size_t, DTYPE, DTYPE *, size_t, 
-		       DTYPE *, DTYPE *, size_t, size_t, size_t, const cntx_t *, auxinfo_t *, gemm_ukr_ft);
+		       DTYPE *, DTYPE *, size_t, size_t, size_t, float *, ukernel_asm, ukernel_edge);
 
 void gemm_base_Cresident( char, int, int, int, DTYPE, DTYPE *, int, DTYPE *, int, DTYPE, DTYPE *, int );
 void gemm_base_ABresident( char, char, int, int, int, DTYPE, DTYPE *, int, DTYPE *, int, DTYPE, DTYPE *, int );

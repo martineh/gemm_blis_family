@@ -126,7 +126,6 @@ void gemm_ukernel_generic_intrinsics_mrxnr(int kc, T beta, T *Ar, T *Br, T *C, i
   vstoreC_mv_nr<nr, mv, nr, vl_fp32>(C, Cr, ldC);
 }
 
-
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
 
@@ -137,13 +136,12 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 		                    DTYPE *B, size_t ldB, 
 		       DTYPE beta,  DTYPE *C, size_t ldC, 
 		       DTYPE *Ac, DTYPE *Bc, 
-                       size_t MC, size_t NC, size_t KC,
-		       const cntx_t * cntx, auxinfo_t * aux, gemm_ukr_ft gemm_kernel) {
+                       size_t MC, size_t NC, size_t KC, float * Ctmp, 
+		       ukernel_asm ukr, ukernel_edge ukr_edge) {
   size_t    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr, j, i; 
   DTYPE  zero = 0.0, one = 1.0, betaI; 
   DTYPE  *Aptr, *Bptr, *Cptr;
 
-  float *Ctmp = (float *)calloc(MR*NR, sizeof(float));
 
   // Quick return if possible
   if ( (m==0)||(n==0)||(((alpha==zero)||(k==0))&&(beta==one)) )
@@ -200,14 +198,15 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 	    else
               Cptr = &Crow(ic+ir,jc+jr);
 
-	    if (mr == MR && nr == NR)
-	      gemm_ukernel_generic_intrinsics_mrxnr<MR, NR, float>(kc, betaI, &Ac[ir*kc], &Bc[jr*kc], Cptr, ldC);
-	    else {
-	      gemm_ukernel_generic_intrinsics_mrxnr<MR, NR, float>(kc, 0.0, &Ac[ir*kc], &Bc[jr*kc], Ctmp, MR);
-              for (j = 0; j < nr; j++)
-                for (i = 0; i < mr; i++)
-                  Cptr[j*ldC + i] = (betaI) * Cptr[j*ldC + i] + Ctmp[j * MR + i];
-	      //gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+	    if (mr == MR && nr == NR) {
+	      //gemm_ukernel_generic_intrinsics_mrxnr<MR, NR, float>(kc, betaI, &Ac[ir*kc], &Bc[jr*kc], Cptr, ldC);
+	      ukr(kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Cptr, ldC * sizeof(float));
+	    } else {
+	      //gemm_ukernel_generic_intrinsics_mrxnr<MR, NR, float>(kc, 0.0, &Ac[ir*kc], &Bc[jr*kc], Ctmp, MR);
+              //for (j = 0; j < nr; j++)
+                //for (i = 0; i < mr; i++)
+                  //Cptr[j*ldC + i] = (betaI) * Cptr[j*ldC + i] + Ctmp[j * MR + i];
+	      ukr_edge(mr, nr, MR, NR, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI, Ctmp, Cptr, ldC);
 	    }
 
           }
@@ -216,7 +215,7 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
     }
   }
 
-  free(Ctmp);
+ // free(Ctmp);
 
 }
 

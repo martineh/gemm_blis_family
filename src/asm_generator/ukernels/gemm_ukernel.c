@@ -1,8 +1,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+extern "C"      // Import C style functions 
+{
 #include "gemm_ukernel_headers.h"
+}
 
 void gemm_ukernel_edge_4x4(size_t mr, size_t nr, size_t _MR, size_t _NR, size_t kc, float *alpha,                  
                            float *a, float *b, float *beta, float *ctmp,                  

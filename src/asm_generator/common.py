@@ -115,7 +115,7 @@ def add_header(MR, NR, edge=False):
         fdout.write(f"typedef void (*ukernel_edge)(size_t mr, size_t nr, size_t _MR, size_t _NR, size_t kc, float *alpha, \n\
                             float *a, float *b, float *beta, float *ctmp, \n\
                             float *C, size_t ldC);\n\n")
-        fdout.write(f"void ukernels_selector(int MR, int NR, ukernel_asm *ukr, ukernel_edge *ukr_edge);\n\n")
+        fdout.write(f"void ukernels_selector(int _MR, int _NR, ukernel_asm *ukr, ukernel_edge *ukr_edge);\n\n")
 
     if add_header:
         if not edge:
@@ -167,15 +167,15 @@ def generate_selector_function(asm, close=False):
         fdout.write("\n#include <stdio.h>\n")
         fdout.write("#include <stdlib.h>\n")
         fdout.write("\n#include \"" + h_name + "\"\n\n")
-        fdout.write("void ukernels_selector(int MR, int NR, ukernel_asm *ukr, ukernel_edge *ukr_edge) {\n\n")
+        fdout.write("void ukernels_selector(int _MR, int _NR, ukernel_asm *ukr, ukernel_edge *ukr_edge) {\n\n")
 
-        fdout.write("  if (MR == %d && NR == %d) {\n" % (MR, NR))
+        fdout.write("  if (_MR == %d && _NR == %d) {\n" % (MR, NR))
         fdout.write("    (*ukr)      = &gemm_ukernel_asm_%dx%d;\n" % (MR, NR))
         fdout.write("    (*ukr_edge) = &gemm_ukernel_edge_%dx%d;\n" % (MR, NR))
         add_header=False
 
     if add_header:
-        fdout.write("  } else if (MR == %d && NR == %d) {\n" % (MR, NR))
+        fdout.write("  } else if (_MR == %d && _NR == %d) {\n" % (MR, NR))
         fdout.write("    (*ukr)      = &gemm_ukernel_asm_%dx%d;\n" % (MR, NR))
         fdout.write("    (*ukr_edge) = &gemm_ukernel_edge_%dx%d;\n" % (MR, NR))
 
