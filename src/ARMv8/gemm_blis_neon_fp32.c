@@ -48,7 +48,7 @@
 #define Ctref(a1,a2) Ctmp[ (a2)*(ldCt)+(a1) ]
 #define Atref(a1,a2) Atmp[ (a2)*(Atlda)+(a1) ]
 
-inline void gemm_microkernel_Cresident_neon_4x4_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_4x4_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 
     int         i, j, k, baseA = 0, baseB = 0, ldCt = MR, Amr, Bnr;
     float32x4_t C00, C01, C02, C03, 
@@ -162,7 +162,7 @@ inline void gemm_microkernel_Cresident_neon_4x4_fp32( char orderC, int mr, int n
 
 
 
-inline void gemm_microkernel_Cresident_neon_4x4_prefetch_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_4x4_prefetch_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 /*
   BLIS GEMM microkernel, computes the product Cr := Cr + Ar * Br
   Specific: only for MRxNR = 4x4
@@ -283,7 +283,7 @@ inline void gemm_microkernel_Cresident_neon_4x4_prefetch_fp32( char orderC, int 
   }
 }
 
-inline void gemm_microkernel_Cresident_neon_4x4_prefetch_unroll_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_4x4_prefetch_unroll_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 /*
   BLIS GEMM microkernel, computes the product Cr := Cr + Ar * Br
   Specific: only for MRxNR = 4x4
@@ -438,7 +438,7 @@ inline void gemm_microkernel_Cresident_neon_4x4_prefetch_unroll_fp32( char order
 }
 
 
-inline void gemm_microkernel_Cresident_neon_8x8_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_8x8_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 
     int         i, j, k, baseA = 0, baseB = 0, ldCt = MR, Amr, Bnr;
     float32x4_t C00, C01, C02, C03, C04, C05, C06, C07, 
@@ -639,7 +639,7 @@ inline void gemm_microkernel_Cresident_neon_8x8_fp32( char orderC, int mr, int n
 }
 
 
-inline void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 
     int         i, j, k, baseA = 0, baseB = 0, ldCt = MR, Amr, Bnr;
     float32x4_t C000, C001, C002, C003, 
@@ -647,7 +647,7 @@ inline void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int 
 		C008, C009, C010, C011,
                 C100, C101, C102, C103, 
 		C104, C105, C106, C107, 
-	        C108, C109, C110, C111,	
+	        C108, C109, C110, C111,	//24->C + 2->A = 26
                 A000, A001, A002, A003, 
 		A004, A005, A006, A007, 
 		A008, A009, A010, A011, 
@@ -660,6 +660,7 @@ inline void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int 
 #define B0    A100
 #define B1    A101
 #define B2    A102
+#define B3    A103
 
     float  zero = 0.0, one = 1.0, *Aptr, *Bptr, Ctmp[MR*NR];
     if ( kc==0 )
@@ -706,10 +707,11 @@ inline void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int 
 		    
 		    A0 = vld1q_f32(&Aptr[baseA]);
 		    A1 = vld1q_f32(&Aptr[baseA+4]);
+		    
 		    B0 = vld1q_f32(&Bptr[baseB]);
 		    B1 = vld1q_f32(&Bptr[baseB+4]);
 		    B2 = vld1q_f32(&Bptr[baseB+8]);
-		    
+
 		    C000 = vfmaq_laneq_f32(C000, A0, B0, 0);
 		    C001 = vfmaq_laneq_f32(C001, A0, B0, 1);
 		    C002 = vfmaq_laneq_f32(C002, A0, B0, 2);
@@ -739,7 +741,68 @@ inline void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int 
 		    C109 = vfmaq_laneq_f32(C109, A1, B2, 1);
 		    C110 = vfmaq_laneq_f32(C110, A1, B2, 2);
 		    C111 = vfmaq_laneq_f32(C111, A1, B2, 3);
-		 
+
+		    /*
+		    //B0 = vmovq_n_f32(Bptr[baseB]);
+		    //B1 = vmovq_n_f32(Bptr[baseB+1]);
+		    //B2 = vmovq_n_f32(Bptr[baseB+2]);
+		    //B3 = vmovq_n_f32(Bptr[baseB+3]);
+		    
+		    B0 = vld1q_dup_f32(&Bptr[baseB]);
+		    B1 = vld1q_dup_f32(&Bptr[baseB+1]);
+		    B2 = vld1q_dup_f32(&Bptr[baseB+2]);
+		    B3 = vld1q_dup_f32(&Bptr[baseB+3]);
+
+		    C000 = vfmaq_f32(C000, A0, B0);
+		    C001 = vfmaq_f32(C001, A0, B1);
+		    C002 = vfmaq_f32(C002, A0, B2);
+		    C003 = vfmaq_f32(C003, A0, B3);
+		    
+		    C100 = vfmaq_f32(C100, A1, B0);
+		    C101 = vfmaq_f32(C101, A1, B1);
+		    C102 = vfmaq_f32(C102, A1, B2);
+		    C103 = vfmaq_f32(C103, A1, B3);
+		    
+		   // B0 = vmovq_n_f32(Bptr[baseB+4]);
+		   // B1 = vmovq_n_f32(Bptr[baseB+5]);
+		   // B2 = vmovq_n_f32(Bptr[baseB+6]);
+		   // B3 = vmovq_n_f32(Bptr[baseB+7]);
+		    
+		    B0 = vld1q_dup_f32(&Bptr[baseB+4]);
+		    B1 = vld1q_dup_f32(&Bptr[baseB+5]);
+		    B2 = vld1q_dup_f32(&Bptr[baseB+6]);
+		    B3 = vld1q_dup_f32(&Bptr[baseB+7]);
+
+		    C004 = vfmaq_f32(C004, A0, B0);
+		    C005 = vfmaq_f32(C005, A0, B1);
+		    C006 = vfmaq_f32(C006, A0, B2);
+		    C007 = vfmaq_f32(C007, A0, B3);
+		    
+		    C104 = vfmaq_f32(C104, A1, B0);
+		    C105 = vfmaq_f32(C105, A1, B1);
+		    C106 = vfmaq_f32(C106, A1, B2);
+		    C107 = vfmaq_f32(C107, A1, B3);
+		    
+		    //B0 = vmovq_n_f32(Bptr[baseB+8]);
+		    //B1 = vmovq_n_f32(Bptr[baseB+9]);
+		    //B2 = vmovq_n_f32(Bptr[baseB+10]);
+		    //B3 = vmovq_n_f32(Bptr[baseB+11]);
+		    
+		    B0 = vld1q_dup_f32(&Bptr[baseB+8]);
+		    B1 = vld1q_dup_f32(&Bptr[baseB+9]);
+		    B2 = vld1q_dup_f32(&Bptr[baseB+10]);
+		    B3 = vld1q_dup_f32(&Bptr[baseB+11]);
+		    
+		    C008 = vfmaq_f32(C008, A0, B0);
+		    C009 = vfmaq_f32(C009, A0, B1);
+		    C010 = vfmaq_f32(C010, A0, B2);
+		    C011 = vfmaq_f32(C011, A0, B3);
+		    
+		    C108 = vfmaq_f32(C108, A1, B0);
+		    C109 = vfmaq_f32(C109, A1, B1);
+		    C110 = vfmaq_f32(C110, A1, B2);
+		    C111 = vfmaq_f32(C111, A1, B3);
+                    */
 		    baseA = baseA+Amr; 
 		    baseB = baseB+Bnr;
 	    }
@@ -901,7 +964,7 @@ inline void gemm_microkernel_Cresident_neon_8x12_fp32( char orderC, int mr, int 
 }
 
 
-inline void gemm_microkernel_Cresident_neon_8x12_prefetch_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_8x12_prefetch_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 
     int         i, j, k, baseA = 0, baseB = 0, ldCt = MR, Amr, Bnr;
     float32x4_t C000, C001, C002, C003, 
@@ -1213,7 +1276,7 @@ inline void gemm_microkernel_Cresident_neon_8x12_prefetch_fp32( char orderC, int
 
 
 
-inline void gemm_microkernel_Cresident_neon_8x8_prefetch_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
+void gemm_microkernel_Cresident_neon_8x8_prefetch_fp32( char orderC, int mr, int nr, int kc, float alpha, float *Ar, float *Br, float beta, float *C, int ldC ){
 /*
   BLIS GEMM microkernel, computes the product Cr := Cr + Ar * Br
   Specific: only for MRxNR = 4x4
@@ -1453,7 +1516,7 @@ inline void gemm_microkernel_Cresident_neon_8x8_prefetch_fp32( char orderC, int 
 }
 }
 
-inline void gemm_microkernel_ABresident_neon_4x4_fp32( char orderA, char transA, int mr, int nc, int kr, float alpha, float *A, int ldA, float *Br, float beta, float *Cr ){
+void gemm_microkernel_ABresident_neon_4x4_fp32( char orderA, char transA, int mr, int nc, int kr, float alpha, float *A, int ldA, float *Br, float beta, float *Cr ){
 /*
   BLIS GEMM microkernel, computes the product Cr := beta * Cr + alpha * Ar * Br
   Specific: only for MRxKR = 4x4
@@ -1622,7 +1685,7 @@ inline void gemm_microkernel_ABresident_neon_4x4_fp32( char orderA, char transA,
   }
 }
 
-inline void fvtrans_float32_4x4( float32x4_t *A0, float32x4_t *A1, float32x4_t *A2, float32x4_t *A3 ) {
+void fvtrans_float32_4x4( float32x4_t *A0, float32x4_t *A1, float32x4_t *A2, float32x4_t *A3 ) {
   float32x4x2_t V = vtrnq_f32 ( (float32x4_t) vtrn1q_f64 ( (float64x2_t) *A0, (float64x2_t) *A2 ),
                                 (float32x4_t) vtrn1q_f64 ( (float64x2_t) *A1, (float64x2_t) *A3 ));
   float32x4x2_t W = vtrnq_f32 ( (float32x4_t) vtrn2q_f64 ( (float64x2_t) *A0, (float64x2_t) *A2 ),
@@ -1633,7 +1696,7 @@ inline void fvtrans_float32_4x4( float32x4_t *A0, float32x4_t *A1, float32x4_t *
   *A3 = W.val[1];
 }
 
-inline void fvtrans_float32_8x8( float32x4_t *A00, float32x4_t *A01, float32x4_t *A02, float32x4_t *A03,
+void fvtrans_float32_8x8( float32x4_t *A00, float32x4_t *A01, float32x4_t *A02, float32x4_t *A03,
                                  float32x4_t *A04, float32x4_t *A05, float32x4_t *A06, float32x4_t *A07,
                                  float32x4_t *A10, float32x4_t *A11, float32x4_t *A12, float32x4_t *A13,
                                  float32x4_t *A14, float32x4_t *A15, float32x4_t *A16, float32x4_t *A17 ) {
@@ -1643,7 +1706,7 @@ inline void fvtrans_float32_8x8( float32x4_t *A00, float32x4_t *A01, float32x4_t
   fvtrans_float32_4x4( A14, A15, A16, A17);
 }
 
-inline float32_t dot(float32x4_t a, float32x4_t b){
+float32_t dot(float32x4_t a, float32x4_t b){
 	         float32_t output;
 		          float32x4_t product = vmlaq_f32(product, a, b);
 			           output = vaddvq_f32(product);

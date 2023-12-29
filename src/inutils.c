@@ -1,5 +1,11 @@
 #include "inutils.h"
 
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
 void set_CNN(int col, int cnn_num, char *tmp, cnn_t *cnn) {
   switch(col) {
     case 0:
@@ -25,8 +31,11 @@ void set_CNN(int col, int cnn_num, char *tmp, cnn_t *cnn) {
 
 
 testConfig_t* new_CNN_Test_Config(char * argv[]) {
-  FILE *fd_conf = fopen(argv[21], "r"); //open config file
-  char * line = NULL;
+  //FILE *fd_conf = fopen(argv[21], "r"); //open config file
+  ifstream file(argv[21]);
+  string line_str;
+
+  char * line;
   size_t len = 0;
   size_t read;
   const char delimiter[] = "\t";
@@ -38,9 +47,11 @@ testConfig_t* new_CNN_Test_Config(char * argv[]) {
   new_testConfig->tmin   = 0;
   new_testConfig->test   = 0;
   new_testConfig->debug  = 0;
-  
+ 
   cnn_num=0;    
-  while ((read = getline(&line, &len, fd_conf)) != -1)
+  //while ((read = getline(&line, &len, fd_conf)) != -1)
+  while (getline(file, line_str)) {
+    line = const_cast<char*>(line_str.c_str());
     if (line[0] != '#') {      
       col = 0;
       tmp = strtok(line, delimiter);
@@ -58,9 +69,10 @@ testConfig_t* new_CNN_Test_Config(char * argv[]) {
 
       cnn_num++;
     }
+  }
 
-  fclose(fd_conf); 
-
+  //fclose(fd_conf); 
+  file.close();
   new_testConfig->cnn_num = cnn_num;
   
   return new_testConfig;

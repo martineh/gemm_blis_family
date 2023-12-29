@@ -31,8 +31,104 @@
 
 #include "gemm_blis.h"
 
-int print_matrix(char *, char, size_t, int, DTYPE *, size_t);
+#include <iostream>
+#include <cassert>
+#include <arm_neon.h>
 
+#define vl_fp32 4
+#define vregister float32x4_t 
+#define vinit(vreg)                     vreg = vmovq_n_f32(0)
+#define vload(vreg, mem)                vreg = vld1q_f32(mem) 
+#define vstore(mem, vreg)               vst1q_f32(mem, vreg) 
+#define vupdate(vreg1, vreg2, vreg3, j) vreg1 = vfmaq_laneq_f32(vreg1, vreg2, vreg3, j) 
+
+// vloadC templates to unroll mr/nr loops to load of micro-tile of C
+template<int i, int j, int k, int l, typename T>
+void vloadC_nr(vregister *Cr, T *C, T beta) {
+  if constexpr (j == 0) return;
+  else { 
+    vloadC_nr<i, j-1, k, l>(Cr, C, beta);
+    if (beta == 1.0)
+      vload(*(Cr + (j - 1) * k + i), C + (j - 1) * vl_fp32);
+    else
+      vinit(*(Cr + (j - 1) * k + i));
+  }
+}
+         
+template<int i, int j, int k, int l, typename T>
+void vloadC_mv_nr(vregister *Cr, T *C, int ldC, T beta) {
+  if constexpr (i == 0) return;
+  else { vloadC_mv_nr<i-1, j, k, l>(Cr, C, ldC, beta);
+         vloadC_nr<i-1, j, k, l>(Cr, &C[(i - 1) * ldC], beta); }}
+         
+// vload template to unroll mv/nv loops to load of Ar/Br into vregs
+template<int i, int j, typename T>
+void vload_(vregister *ar, T *Ar) {
+  if constexpr (i == 0) return;
+  else { vload_<i-1, j>(ar, Ar);
+         vload(*(ar + i - 1), Ar + (i - 1) * j); }}
+         
+// vupdate templates to unroll mv/nv/vl loops to load Ar/Br into vregs
+template<int i>
+void vupdate_vl(vregister *Cr, vregister ar, vregister br) {
+  if constexpr (i == 0) return;
+  else { vupdate_vl<i-1>(Cr, ar, br);
+         vupdate(*(Cr + i - 1), ar, br, i - 1); }}
+         
+template<int i, int j>
+void vupdate_vl_nv(vregister *Cr, vregister ar, vregister *br) {
+  if constexpr (i == 0) return;
+  else { vupdate_vl_nv<i-1, j>(Cr, ar, br);
+         vupdate_vl<j>((Cr + (i - 1) * j), ar, *(br + i - 1)); }}
+         
+template<int i, int j, int k, int nr>
+void vupdate_vl_nv_mv(vregister*Cr, vregister*ar, vregister*br){
+  if constexpr (i == 0) return;
+  else { vupdate_vl_nv_mv<i-1, j, k, nr>(Cr, ar, br);
+         vupdate_vl_nv<j, k>((Cr + (i - 1) * nr), *(ar + i - 1), br);}}
+
+// vstoreC templates to unroll mr/nr loops to store of micro-tile of C
+template<int i, int j, int k, int l, typename T>
+void vstoreC_mv(T *C, vregister *Cr) {
+  if constexpr (j == 0) return;
+  else { vstoreC_mv<i, j-1, k, l>(C, Cr);
+         vstore(C + (j - 1) * vl_fp32, *(Cr + (j - 1) * k + i)); }}
+         
+template<int i, int j, int k, int l, typename T>
+void vstoreC_mv_nr(T *C, vregister *Cr, int ldC) {
+  if constexpr (i == 0) return;
+  else { vstoreC_mv_nr<i-1, j, k, l>(C, Cr, ldC);
+         vstoreC_mv<i-1, j, k, l>(&C[(i - 1) * ldC], Cr); }}
+
+
+template<int mr, int nr, typename T>
+void gemm_ukernel_generic_intrinsics_mrxnr(int kc, T beta, T *Ar, T *Br, T *C, int ldC) {
+  // mr x nr micro-kernel with C resident in regs.
+
+  constexpr int mv = mr / vl_fp32, nv = nr / vl_fp32;
+  int iv, j, jv, pr, baseA = 0, baseB = 0;
+  vregister Cr[mv * nr],    // Macro-tile of C
+            ar[mv], br[nv]; // Single column/row of Ar/Br
+
+  // Load the micro-tile of C if beta==1.0 into vector registers
+  vloadC_mv_nr<nr, mv, nr, vl_fp32>(Cr, C, ldC, beta);
+
+  for (pr=0; pr<kc; pr++) {
+     // Load the pr-th column/row of Ar/Br into vector registers
+     vload_<mv, vl_fp32>(ar, &Ar[baseA]); baseA += mr; 
+     vload_<nv, vl_fp32>(br, &Br[baseB]); baseB += nr;
+
+     // Update micro-tile with AXPYs
+     vupdate_vl_nv_mv<mv, nv, vl_fp32, nr>(Cr, ar, br); 
+  }
+  
+  // Store the micro-tile in memory
+  vstoreC_mv_nr<nr, mv, nr, vl_fp32>(C, Cr, ldC);
+}
+
+
+#define min(a,b) (((a)<(b))?(a):(b))
+#define max(a,b) (((a)>(b))?(a):(b))
 
 void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
                        char transA, char transB, 
@@ -43,14 +139,12 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 		       DTYPE *Ac, DTYPE *Bc, 
                        size_t MC, size_t NC, size_t KC,
 		       const cntx_t * cntx, auxinfo_t * aux, gemm_ukr_ft gemm_kernel) {
-  size_t    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr; 
+  size_t    ic, jc, pc, mc, nc, kc, ir, jr, mr, nr, j, i; 
   DTYPE  zero = 0.0, one = 1.0, betaI; 
   DTYPE  *Aptr, *Bptr, *Cptr;
 
-  #if defined(CHECK)
-  #include "check_params.h"
-  #endif
-  
+  float *Ctmp = (float *)calloc(MR*NR, sizeof(float));
+
   // Quick return if possible
   if ( (m==0)||(n==0)||(((alpha==zero)||(k==0))&&(beta==one)) )
     return;
@@ -106,32 +200,24 @@ void gemm_blis_B3A2C0( char orderA, char orderB, char orderC,
 	    else
               Cptr = &Crow(ic+ir,jc+jr);
 
-            #if defined(FAMILY_BLIS)
-	      gemm_kernel(mr, nr, kc, &alpha, &Ac[ir*kc], &Bc[jr*kc], &betaI,  Cptr, 1, ldC, aux, cntx);
-            #else
-              #ifdef AVX2
-                #if (MR == 16) && (NR == 6)
-	          gemm_microkernel_Cresident_AMD_avx256_2vx6_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
-                #else
-		  printf("ERROR: Micro-kernel not implemented\n");
-		  exit(-1);
-                #endif
-	      #elif ARMv8
-                #if (MR == 8) && (NR == 12)
-	          gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
-                #else
-		  printf("ERROR: Micro-kernel not implemented\n");
-		  exit(-1);
-                #endif
-              #endif
-	    #endif
+	    if (mr == MR && nr == NR)
+	      gemm_ukernel_generic_intrinsics_mrxnr<MR, NR, float>(kc, betaI, &Ac[ir*kc], &Bc[jr*kc], Cptr, ldC);
+	    else {
+	      gemm_ukernel_generic_intrinsics_mrxnr<MR, NR, float>(kc, 0.0, &Ac[ir*kc], &Bc[jr*kc], Ctmp, MR);
+              for (j = 0; j < nr; j++)
+                for (i = 0; i < mr; i++)
+                  Cptr[j*ldC + i] = (betaI) * Cptr[j*ldC + i] + Ctmp[j * MR + i];
+	      //gemm_microkernel_Cresident_neon_8x12_fp32( orderC, mr, nr, kc, alpha, &Ac[ir*kc], &Bc[jr*kc], betaI, Cptr, ldC ); 
+	    }
 
           }
-	  
         }
       }
     }
   }
+
+  free(Ctmp);
+
 }
 
 

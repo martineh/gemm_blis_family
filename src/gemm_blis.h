@@ -16,8 +16,6 @@
 //#include <arm_sve.h>
 //#include <riscv_vector.h>
 
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
 
 #define Acol(a1,a2)  A[ (a2)*(ldA)+(a1) ]
 #define Bcol(a1,a2)  B[ (a2)*(ldB)+(a1) ]

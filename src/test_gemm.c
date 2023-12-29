@@ -81,15 +81,6 @@ void my_aligned_free(void* aligned_ptr) {
 }
 
 int main(int argc, char *argv[]) {
-  #if !defined(BLIS)
-    //  BLIS MICRO-KERNEL 
-    // -------------------
-    #define BTYPE BLIS_FLOAT
-    auxinfo_t aux;
-    bli_init();
-    const cntx_t * cntx = bli_gks_query_cntx();
-    gemm_ukr_ft gemm_kernel = bli_cntx_get_l3_vir_ukr_dt(BLIS_FLOAT, BLIS_GEMM_UKR, cntx);
-  #endif
   
   char  orderA, orderB, orderC, transA, transB, test;
   char variant[20];
@@ -336,7 +327,7 @@ int main(int argc, char *argv[]) {
 	    nreps++;
             #if defined(FAMILY) || defined(FAMILY_BLIS)
 	      gemm_blis_B3A2C0( orderA, orderB, orderC, transA, transB, m, n, k, alpha, A, ldA, B, ldB, beta, C, ldC, 
-	      		        Ac, Bc, mc, nc, kc, cntx, &aux, gemm_kernel);
+	      		        Ac, Bc, mc, nc, kc, NULL, NULL, NULL);
             #else
 	      sgemm_("No transpose", "No transpose", (void *)&m, (void *)&n, (void *)&k, &alpha, A, (void *)&ldA, B, 
 		    (void *)&ldB, &beta, C, (void *)&ldC);

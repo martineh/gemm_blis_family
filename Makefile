@@ -3,8 +3,8 @@ include Makefile.inc
 #------------------------------------------
 #| COMPILERS                              |
 #------------------------------------------
-CC       =  gcc
-CLINKER  =  gcc
+CC       =  g++
+CLINKER  =  g++
 #------------------------------------------
 
 OBJDIR = build
@@ -46,8 +46,8 @@ ifeq ($(SIMD_MODE), AVX2)
   _OBJ += gemm_blis_amd_avx256_fp32.o
 else ifeq ($(SIMD_MODE), ARMv8)
   SIMD  = -DARMv8
-  FLAGS = -O3 -march=armv8-a -fopenmp -Wall -Wunused-function
-  _OBJ += gemm_blis_neon_fp32.o 
+  FLAGS = -O3 -march=armv8-a -fopenmp -Wall -Wunused-function -std=gnu++17
+  _OBJ += gemm_blis_neon_fp32.o
 else
   FLAGS = -O3 
 endif
